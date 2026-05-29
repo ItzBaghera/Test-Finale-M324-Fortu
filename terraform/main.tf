@@ -114,7 +114,7 @@ resource "aws_security_group" "web" {
 # --- SSH key pair ---
 resource "aws_key_pair" "deployer" {
   key_name   = "m324-key"
-  public_key = file(var.public_key_path)
+  public_key = file("${path.module}/${var.public_key_file}")
 }
 
 # --- EC2 instance ---

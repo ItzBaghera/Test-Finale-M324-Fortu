@@ -30,8 +30,19 @@ pipeline {
             steps {
                 dir('terraform') {
                     script {
-                        runCmd 'terraform init -input=false'
-                        runCmd 'terraform plan -input=false -out=tfplan'
+                        if (isUnix()) {
+                            sh '''
+                                export TF_VAR_my_ip="$(curl -s https://api.ipify.org)/32"
+                                terraform init -input=false
+                                terraform plan -input=false -out=tfplan
+                            '''
+                        } else {
+                            bat '''
+                                for /f %%i in ('curl -s https://api.ipify.org') do set TF_VAR_my_ip=%%i/32
+                                terraform init -input=false
+                                terraform plan -input=false -out=tfplan
+                            '''
+                        }
                     }
                 }
             }

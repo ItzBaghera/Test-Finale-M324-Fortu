@@ -9,10 +9,10 @@ variable "my_ip" {
   type        = string
 }
 
-variable "public_key_path" {
-  description = "Path to the SSH public key uploaded to the EC2 key pair"
+variable "public_key_file" {
+  description = "SSH public key file (in the terraform/ folder) uploaded to the EC2 key pair"
   type        = string
-  default     = "~/.ssh/id_rsa.pub"
+  default     = "deployer.pub"
 }
 
 variable "instance_name" {

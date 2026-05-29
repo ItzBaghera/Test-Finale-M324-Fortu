@@ -81,8 +81,7 @@ pipeline {
                 // withCredentials + "ssh -i" instead of the sshagent step, because
                 // the SSH Agent plugin is not compatible with Windows' native OpenSSH.
                 withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
-                    // Give the new instance time to boot and install Docker (via user_data).
-                    sleep(time: 90, unit: 'SECONDS')
+
                     script {
                         if (isUnix()) {
                             sh '''

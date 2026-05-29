@@ -136,6 +136,6 @@ resource "aws_instance" "jenkins_agent" {
   EOF
 
   tags = {
-    Name = var.instance_name
+    Name = "FortuGoated"
   }
 }

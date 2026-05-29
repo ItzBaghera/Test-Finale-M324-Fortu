@@ -86,16 +86,19 @@ pipeline {
                         if (isUnix()) {
                             sh '''
                                 SSH_OPTS="-i $SSH_KEY -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-                                docker save $IMAGE | ssh $SSH_OPTS $SSH_USER@$EC2_IP "sudo docker load"
-                                ssh $SSH_OPTS $SSH_USER@$EC2_IP "sudo docker rm -f app 2>/dev/null || true"
-                                ssh $SSH_OPTS $SSH_USER@$EC2_IP "sudo docker run -d --name app -p 80:3000 $IMAGE"
+                                docker save $IMAGE | ssh $SSH_OPTS ubuntu@$EC2_IP "sudo docker load"
+                                ssh $SSH_OPTS ubuntu@$EC2_IP "sudo docker rm -f app 2>/dev/null || true"
+                                ssh $SSH_OPTS ubuntu@$EC2_IP "sudo docker run -d --name app -p 80:3000 $IMAGE"
                             '''
                         } else {
+                            // Jenkins may store the key with CRLF; Windows OpenSSH needs LF.
+                            // Normalize to LF in a workspace file, then use it.
+                            powershell '[IO.File]::WriteAllText("$env:WORKSPACE/id_deploy", ([IO.File]::ReadAllText($env:SSH_KEY) -replace "`r",""))'
                             bat '''
-                                icacls "%SSH_KEY%" /inheritance:r /grant:r "*S-1-5-18:F"
-                                docker save %IMAGE% | ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL %SSH_USER%@%EC2_IP% "sudo docker load"
-                                ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL %SSH_USER%@%EC2_IP% "sudo docker rm -f app || true"
-                                ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL %SSH_USER%@%EC2_IP% "sudo docker run -d --name app -p 80:3000 %IMAGE%"
+                                icacls "%WORKSPACE%\\id_deploy" /inheritance:r /grant:r "*S-1-5-18:F"
+                                docker save %IMAGE% | ssh -i "%WORKSPACE%\\id_deploy" -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL ubuntu@%EC2_IP% "sudo docker load"
+                                ssh -i "%WORKSPACE%\\id_deploy" -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL ubuntu@%EC2_IP% "sudo docker rm -f app || true"
+                                ssh -i "%WORKSPACE%\\id_deploy" -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL ubuntu@%EC2_IP% "sudo docker run -d --name app -p 80:3000 %IMAGE%"
                             '''
                         }
                     }

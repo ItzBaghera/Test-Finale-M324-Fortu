@@ -77,23 +77,26 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                // SSH private key matching the public key uploaded by Terraform,
-                // stored in Jenkins as an SSH credential with ID "ec2-ssh-key".
-                sshagent(['ec2-ssh-key']) {
+                // SSH private key stored in Jenkins (ID "ec2-ssh-key"). We use
+                // withCredentials + "ssh -i" instead of the sshagent step, because
+                // the SSH Agent plugin is not compatible with Windows' native OpenSSH.
+                withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
                     // Give the new instance time to boot and install Docker (via user_data).
                     sleep(time: 90, unit: 'SECONDS')
                     script {
                         if (isUnix()) {
                             sh '''
-                                docker save $IMAGE | ssh -o StrictHostKeyChecking=no ubuntu@$EC2_IP "sudo docker load"
-                                ssh -o StrictHostKeyChecking=no ubuntu@$EC2_IP "sudo docker rm -f app 2>/dev/null || true"
-                                ssh -o StrictHostKeyChecking=no ubuntu@$EC2_IP "sudo docker run -d --name app -p 80:3000 $IMAGE"
+                                SSH_OPTS="-i $SSH_KEY -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+                                docker save $IMAGE | ssh $SSH_OPTS $SSH_USER@$EC2_IP "sudo docker load"
+                                ssh $SSH_OPTS $SSH_USER@$EC2_IP "sudo docker rm -f app 2>/dev/null || true"
+                                ssh $SSH_OPTS $SSH_USER@$EC2_IP "sudo docker run -d --name app -p 80:3000 $IMAGE"
                             '''
                         } else {
                             bat '''
-                                docker save %IMAGE% | ssh -o StrictHostKeyChecking=no ubuntu@%EC2_IP% "sudo docker load"
-                                ssh -o StrictHostKeyChecking=no ubuntu@%EC2_IP% "sudo docker rm -f app || true"
-                                ssh -o StrictHostKeyChecking=no ubuntu@%EC2_IP% "sudo docker run -d --name app -p 80:3000 %IMAGE%"
+                                icacls "%SSH_KEY%" /inheritance:r /grant:r "*S-1-5-18:F"
+                                docker save %IMAGE% | ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL %SSH_USER%@%EC2_IP% "sudo docker load"
+                                ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL %SSH_USER%@%EC2_IP% "sudo docker rm -f app || true"
+                                ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL %SSH_USER%@%EC2_IP% "sudo docker run -d --name app -p 80:3000 %IMAGE%"
                             '''
                         }
                     }
